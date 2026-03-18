@@ -1,1 +1,113 @@
 宮下
+import { useEffect, useRef, useState } from "react";
+
+export default function CatRunnerGame() {
+  const canvasRef = useRef(null);
+  const [gameOver, setGameOver] = useState(false);
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    const ctx = canvas.getContext("2d");
+
+    let cat = { x: 50, y: 150, vy: 0, width: 40, height: 40, jumping: false };
+    let gravity = 0.6;
+    let obstacles = [];
+    let speed = 3;
+    let frame = 0;
+
+    function spawnObstacle() {
+      obstacles.push({ x: canvas.width, y: 160, width: 30, height: 30 });
+    }
+
+    function update() {
+      if (gameOver) return;
+
+      frame++;
+      if (frame % 100 === 0) spawnObstacle();
+
+      // speed increases over time
+      speed += 0.002;
+
+      cat.vy += gravity;
+      cat.y += cat.vy;
+
+      if (cat.y > 150) {
+        cat.y = 150;
+        cat.vy = 0;
+        cat.jumping = false;
+      }
+
+      obstacles.forEach((obs) => {
+        obs.x -= speed;
+      });
+
+      // collision
+      obstacles.forEach((obs) => {
+        if (
+          cat.x < obs.x + obs.width &&
+          cat.x + cat.width > obs.x &&
+          cat.y < obs.y + obs.height &&
+          cat.y + cat.height > obs.y
+        ) {
+          setGameOver(true);
+        }
+      });
+
+      obstacles = obstacles.filter((obs) => obs.x + obs.width > 0);
+    }
+
+    function draw() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      // background
+      ctx.fillStyle = "#eee";
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      // cat (player)
+      ctx.fillStyle = "black";
+      ctx.fillRect(cat.x, cat.y, cat.width, cat.height);
+
+      // obstacles (mice)
+      ctx.fillStyle = "gray";
+      obstacles.forEach((obs) => {
+        ctx.fillRect(obs.x, obs.y, obs.width, obs.height);
+      });
+
+      if (gameOver) {
+        ctx.fillStyle = "red";
+        ctx.font = "24px sans-serif";
+        ctx.fillText("Game Over", 100, 100);
+      }
+    }
+
+    function loop() {
+      update();
+      draw();
+      requestAnimationFrame(loop);
+    }
+
+    loop();
+
+    function handleJump(e) {
+      if ((e.code === "Space" || e.type === "click") && !cat.jumping) {
+        cat.vy = -12;
+        cat.jumping = true;
+      }
+    }
+
+    window.addEventListener("keydown", handleJump);
+    window.addEventListener("click", handleJump);
+
+    return () => {
+      window.removeEventListener("keydown", handleJump);
+      window.removeEventListener("click", handleJump);
+    };
+  }, [gameOver]);
+
+  return (
+    <div className="flex flex-col items-center">
+      <h1 className="text-xl mb-2">Cat Runner</h1>
+      <canvas ref={canvasRef} width={400} height={200} className="border" />
+    </div>
+  );
+}
